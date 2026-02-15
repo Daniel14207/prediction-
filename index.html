@@ -1,0 +1,140 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>VICK V4 - VITAL PRONO</title>
+    
+    <!-- Frameworks & Fonts -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Import Map pour compatibilité -->
+    <script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@^19.2.4",
+    "react-dom/client": "https://esm.sh/react-dom@^19.2.4/client",
+    "react/": "https://esm.sh/react@^19.2.4/",
+    "framer-motion": "https://esm.sh/framer-motion@^12.34.0",
+    "lucide-react": "https://esm.sh/lucide-react@^0.564.0",
+    "@google/genai": "https://esm.sh/@google/genai@^1.41.0",
+    "@netlify/functions": "https://esm.sh/@netlify/functions@^5.1.2",
+    "node-fetch": "https://esm.sh/node-fetch@^3.3.2",
+    "busboy": "https://esm.sh/busboy@^1.6.0",
+    "cloudinary": "https://esm.sh/cloudinary@^2.9.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/"
+  }
+}
+</script>
+
+    <style>
+        /* --- CORE THEME VARIABLES --- */
+        :root {
+            --band-white-start: #FFFFFF;
+            --band-white-end: #F2F2F2;
+            --band-red-start: #D10000;
+            --band-red-end: #8B0000;
+            --band-green-start: #008A3D;
+            --band-green-end: #004F23;
+            
+            --glass-bg: rgba(20, 20, 20, 0.65);
+            --glass-border: rgba(255, 255, 255, 0.15);
+            --neon-glow: 0 0 15px rgba(255, 255, 255, 0.4);
+        }
+
+        body {
+            background-color: #020617; /* Fond très sombre (Navy/Black) */
+            color: #fff;
+            font-family: 'Rajdhani', sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            -webkit-font-smoothing: antialiased;
+            margin: 0;
+        }
+
+        .font-orbitron { font-family: 'Orbitron', sans-serif; }
+
+        /* --- BACKGROUND GRADIENT (Used in App.tsx) --- */
+        .bg-premium-gradient {
+            /* Modification : Dégradé Bleu Marin profond */
+            background: radial-gradient(circle at 50% 50%, #0B1C2D 0%, #020617 100%);
+        }
+
+        /* --- GLASS UI --- */
+        .glass-panel, .glass {
+            background: rgba(10, 15, 25, 0.75); /* Légère teinte bleutée pour l'harmonie */
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.6);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .glass::before, .glass-panel::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+        }
+
+        /* --- PREMIUM BUTTONS --- */
+        .btn-premium {
+            background: linear-gradient(135deg, rgba(209, 0, 0, 0.8) 0%, rgba(139, 0, 0, 0.9) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn-premium:hover {
+            box-shadow: 0 0 20px rgba(0, 138, 61, 0.6); /* Green Glow */
+            border-color: rgba(0, 138, 61, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .btn-premium:active {
+            transform: scale(0.95);
+        }
+
+        .btn-premium::after {
+            content: '';
+            position: absolute;
+            top: -50%; left: -50%; width: 200%; height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, transparent 60%);
+            opacity: 0;
+            transform: scale(0.5);
+            transition: opacity 0.5s, transform 0.5s;
+        }
+        
+        .btn-premium:hover::after {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        /* Helper Classes */
+        .text-glow { text-shadow: 0 0 10px rgba(255,255,255,0.5); }
+        .text-glow-red { text-shadow: 0 0 15px rgba(209, 0, 0, 0.8); }
+        .text-glow-green { text-shadow: 0 0 15px rgba(0, 138, 61, 0.8); }
+        
+        /* Scrollbar Hide */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="module" src="./index.tsx"></script>
+</body>
+</html>
