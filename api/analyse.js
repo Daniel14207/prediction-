@@ -8,8 +8,16 @@ export const config = {
 };
 
 export default async function handler(req, res) {
+  // Always set header to application/json
+  res.setHeader('Content-Type', 'application/json');
+
   if (req.method !== "POST") {
-    return res.status(405).json({ status: "error", message: "Method Not Allowed" });
+    return res.status(200).json({ 
+      status: "partiel", 
+      analyser: "Méthode non autorisée", 
+      message: "Seul le POST est accepté", 
+      predictions: [] 
+    });
   }
 
   const busboy = Busboy({ headers: req.headers });
@@ -34,12 +42,12 @@ export default async function handler(req, res) {
     busboy.on("finish", async () => {
       try {
         if (!fileBuffer) {
-          throw new Error("Aucune image détectée.");
+          throw new Error("Aucune image détectée dans le flux.");
         }
 
         const apiKey = process.env.API_KEY;
         if (!apiKey) {
-          throw new Error("Clé API manquante.");
+          throw new Error("Configuration API absente sur le serveur.");
         }
 
         const ai = new GoogleGenAI({ apiKey });
@@ -65,20 +73,22 @@ export default async function handler(req, res) {
         const result = response.text;
 
         if (!result) {
-          throw new Error("L'IA n'a pas retourné de résultat exploitable.");
+          throw new Error("L'IA a retourné une réponse vide.");
         }
 
+        // FORMAT OBLIGATOIRE – SUCCÈS
         return res.status(200).json({
           status: "ok",
-          analyse: result,
+          analyser: result,
           source: "image_upload"
         });
       } catch (error) {
-        console.error("Backend Analysis Error:", error);
+        console.error("Critical Backend Error:", error.message);
+        // FORMAT OBLIGATOIRE – ÉCHEC / PARTIEL
         return res.status(200).json({
-          status: "partial",
-          analyse: `Analyse impossible: ${error.message}`,
-          message: error.message,
+          status: "partiel",
+          analyser: "Analyse partielle - " + (error.message || "Erreur inconnue"),
+          message: error.message || "Une erreur est survenue lors de l'analyse IA",
           predictions: []
         });
       } finally {
@@ -87,10 +97,12 @@ export default async function handler(req, res) {
     });
 
     busboy.on("error", (error) => {
+      console.error("Busboy stream error:", error);
       res.status(200).json({
-        status: "partial",
-        analyse: "Échec du transfert de données.",
-        message: error.message
+        status: "partiel",
+        analyser: "Échec du transfert d'image",
+        message: error.message,
+        predictions: []
       });
       resolve();
     });

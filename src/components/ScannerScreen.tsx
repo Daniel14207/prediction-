@@ -104,12 +104,13 @@ const ScannerScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
       const data = await response.json();
       
+      // Access 'analyser' as per backend fix
       if (data.status === "ok") {
-          setResult(data.analyse || "Aucun texte généré.");
-      } else if (data.status === "partial") {
-          setResult(data.analyse || "Erreur partielle.");
+          setResult(data.analyser || "Aucun texte généré.");
+      } else if (data.status === "partiel") {
+          setResult(data.analyser || "Résultat partiel.");
       } else {
-          setResult("Réponse serveur invalide.");
+          setResult("Le serveur n'a pas renvoyé de JSON valide.");
       }
 
     } catch (error: any) {

@@ -98,25 +98,24 @@ const ScannerScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         body: formData,
       });
 
-      // Handle non-200 or parsing errors
       if (!response.ok) {
-        throw new Error(`Erreur réseau (${response.status})`);
+        throw new Error(`Serveur injoignable (${response.status})`);
       }
 
       const data = await response.json();
       
-      // Mandatory format handling: { status: "ok", analyse: "..." }
+      // Mandatory format handling: 'analyser' field
       if (data.status === "ok") {
-          setResult(data.analyse || "Analyse terminée sans texte.");
-      } else if (data.status === "partial") {
-          setResult(data.analyse || "Analyse partielle suite à une erreur technique.");
+          setResult(data.analyser || "Analyse terminée, aucun détail supplémentaire.");
+      } else if (data.status === "partiel") {
+          setResult(data.analyser || data.message || "Analyse partielle effectuée.");
       } else {
-          setResult("Format de réponse inconnu.");
+          setResult("Le serveur a renvoyé un format de réponse invalide.");
       }
 
     } catch (error: any) {
       console.error("Scan failed:", error);
-      setResult(`Erreur Critique: ${error.message || "Impossible de joindre le serveur"}`);
+      setResult(`Échec de l'analyse : ${error.message || "Connexion perdue"}`);
     } finally {
       setLoading(false);
     }
