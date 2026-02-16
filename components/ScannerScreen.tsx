@@ -17,9 +17,7 @@ const ScannerScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       try {
         const bmp = await createImageBitmap(file);
         const canvas = document.createElement("canvas");
-        // Max width 1024 to reduce payload size for Netlify Functions (6MB limit)
         const scale = 1024 / bmp.width;
-        // If image is smaller than 1024, don't scale up
         const finalScale = scale < 1 ? scale : 1;
         
         canvas.width = bmp.width * finalScale;
@@ -30,7 +28,6 @@ const ScannerScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         
         ctx.drawImage(bmp, 0, 0, canvas.width, canvas.height);
         
-        // Convert to blob then base64 to ensure JPEG format and compression
         canvas.toBlob((blob) => {
           if (!blob) {
              reject(new Error("Compression failed"));
@@ -42,7 +39,7 @@ const ScannerScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
              resolve(reader.result as string);
           };
           reader.onerror = reject;
-        }, "image/jpeg", 0.7); // 70% quality JPEG
+        }, "image/jpeg", 0.7);
         
       } catch (error) {
         reject(error);
@@ -54,9 +51,6 @@ const ScannerScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     const file = e.target.files?.[0];
     if (file) {
       try {
-        // Just show preview initially, compression happens on send if desired, 
-        // but for UI responsiveness let's just show raw first or compress immediately.
-        // Let's compress immediately to ensure 'image' state is ready for API.
         const compressedBase64 = await compressImage(file);
         setImage(compressedBase64);
         setResult(null);
@@ -76,9 +70,6 @@ const ScannerScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     setResult(null);
 
     try {
-      // Extract Base64 data (remove data:image/jpeg;base64, prefix)
-      const base64Data = image.split(',')[1];
-      
       const prompt = `
       TASK: Analyze this casino game screenshot.
       CONTEXT: Game Mode is "${gameMode === 'simple' ? 'Simple' : 'Multiple'}".
@@ -96,26 +87,35 @@ const ScannerScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       - Keep it under 60 words.
       `;
 
-      // Call Netlify Function
-      const response = await fetch('/api/analyse', { // Using the redirect path
+      // Convert Base64 back to Blob for multipart upload (matches Busboy backend)
+      const fetchResponse = await fetch(image);
+      const blob = await fetchResponse.blob();
+
+      const formData = new FormData();
+      formData.append('image', blob, 'scan.jpg');
+      formData.append('prompt', prompt);
+
+      const response = await fetch('/api/analyse', { 
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          base64: base64Data,
-          mimeType: "image/jpeg", // We converted to jpeg in compressImage
-          prompt: prompt,
-        }),
+        body: formData,
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.error || `Server error: ${response.status}`);
+        throw new Error(`Erreur serveur: ${response.status}`);
       }
+
+      const data = await response.json();
       
-      setResult(data.result || data.text || "Aucune donnée détectée.");
+      // Handle the new mandatory format: { status: "ok", analyse: "..." }
+      if (data.status === "ok" && typeof data.analyse === 'string') {
+          setResult(data.analyse);
+      } else if (data.status === "partial" && data.analyse && data.analyse.message) {
+          setResult(data.analyse.message);
+      } else if (typeof data.analyse === 'string') {
+          setResult(data.analyse);
+      } else {
+          setResult("Aucun résultat exploitable retourné par l'IA.");
+      }
 
     } catch (error: any) {
       console.error("Scan failed:", error);
@@ -143,7 +143,6 @@ const ScannerScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       <div className="flex-1 overflow-y-auto no-scrollbar px-6 space-y-6 pb-24">
          <div className="glass p-6 rounded-[32px] bg-black/60 border border-white/10 space-y-6">
             
-            {/* Game Mode Selector */}
             <div className="grid grid-cols-2 gap-3 p-1 bg-white/5 rounded-2xl border border-white/5">
                 <button 
                     onClick={() => setGameMode('simple')}

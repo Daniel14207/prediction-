@@ -12,7 +12,7 @@ export const config = {
 export default async function handler(req, res) {
   // Only allow POST
   if (req.method !== "POST") {
-    return res.status(405).json({ success: false, error: "Method Not Allowed" });
+    return res.status(405).json({ status: "error", error: "Method Not Allowed" });
   }
 
   const busboy = Busboy({ headers: req.headers });
@@ -40,23 +40,21 @@ export default async function handler(req, res) {
     busboy.on("finish", async () => {
       try {
         if (!fileBuffer) {
-          res.status(400).json({ success: false, error: "No image uploaded" });
-          return resolve();
+          throw new Error("Aucune image détectée.");
         }
 
-        const apiKey = process.env.GEMINI_API_KEY;
+        // Must use process.env.API_KEY as per system instructions
+        const apiKey = process.env.API_KEY;
         if (!apiKey) {
-          console.error("Missing GEMINI_API_KEY environment variable");
-          res.status(500).json({ success: false, error: "Server configuration error" });
-          return resolve();
+          throw new Error("Configuration API manquante sur le serveur.");
         }
 
         const ai = new GoogleGenAI({ apiKey });
-        const prompt = fields.prompt || "Analyze this image.";
+        const prompt = fields.prompt || "Analyse cette capture de jeu de casino.";
 
-        // Call Gemini 1.5 Flash (efficient for vision)
+        // Use gemini-3-flash-preview as per model selection rules (do not use 1.5-flash)
         const response = await ai.models.generateContent({
-          model: "gemini-1.5-flash",
+          model: "gemini-3-flash-preview",
           contents: [
             {
               parts: [
@@ -72,17 +70,30 @@ export default async function handler(req, res) {
           ],
         });
 
-        const result = response.candidates?.[0]?.content?.parts?.[0]?.text;
+        const result = response.text;
 
         if (!result) {
-          throw new Error("No text result returned from Gemini");
+          throw new Error("L'IA n'a pas retourné de texte.");
         }
 
-        res.status(200).json({ success: true, result });
+        // Mandatory response format
+        res.status(200).json({
+          status: "ok",
+          analyse: result,
+          source: "image_upload"
+        });
         resolve();
       } catch (error) {
         console.error("Analysis Error:", error);
-        res.status(500).json({ success: false, error: error.message || "Analysis failed" });
+        // Fallback mandatory format
+        res.status(200).json({
+          status: "partial",
+          analyse: {
+            message: error.message || "Analyse partielle suite à une erreur technique.",
+            predictions: []
+          },
+          source: "image_upload"
+        });
         resolve();
       }
     });
@@ -90,7 +101,14 @@ export default async function handler(req, res) {
     // Handle errors
     busboy.on("error", (error) => {
       console.error("Busboy Error:", error);
-      res.status(500).json({ success: false, error: "Upload failed" });
+      res.status(200).json({
+        status: "partial",
+        analyse: {
+          message: "Échec du transfert de l'image.",
+          predictions: []
+        },
+        source: "image_upload"
+      });
       resolve();
     });
 
