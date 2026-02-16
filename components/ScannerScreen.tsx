@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Upload, ScanEye, Search, CheckCircle2, AlertTriangle, Layers, Zap } from 'lucide-react';
@@ -87,7 +86,6 @@ const ScannerScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       - Keep it under 60 words.
       `;
 
-      // Convert Base64 back to Blob for multipart upload (matches Busboy backend)
       const fetchResponse = await fetch(image);
       const blob = await fetchResponse.blob();
 
@@ -100,26 +98,25 @@ const ScannerScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         body: formData,
       });
 
+      // Handle non-200 or parsing errors
       if (!response.ok) {
-        throw new Error(`Erreur serveur: ${response.status}`);
+        throw new Error(`Erreur réseau (${response.status})`);
       }
 
       const data = await response.json();
       
-      // Handle the new mandatory format: { status: "ok", analyse: "..." }
-      if (data.status === "ok" && typeof data.analyse === 'string') {
-          setResult(data.analyse);
-      } else if (data.status === "partial" && data.analyse && data.analyse.message) {
-          setResult(data.analyse.message);
-      } else if (typeof data.analyse === 'string') {
-          setResult(data.analyse);
+      // Mandatory format handling: { status: "ok", analyse: "..." }
+      if (data.status === "ok") {
+          setResult(data.analyse || "Analyse terminée sans texte.");
+      } else if (data.status === "partial") {
+          setResult(data.analyse || "Analyse partielle suite à une erreur technique.");
       } else {
-          setResult("Aucun résultat exploitable retourné par l'IA.");
+          setResult("Format de réponse inconnu.");
       }
 
     } catch (error: any) {
       console.error("Scan failed:", error);
-      setResult(`Erreur: ${error.message || "Analyse impossible"}`);
+      setResult(`Erreur Critique: ${error.message || "Impossible de joindre le serveur"}`);
     } finally {
       setLoading(false);
     }

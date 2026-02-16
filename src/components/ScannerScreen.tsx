@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Upload, ScanEye, Search, CheckCircle2, AlertTriangle, Layers, Zap } from 'lucide-react';
@@ -17,9 +16,7 @@ const ScannerScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       try {
         const bmp = await createImageBitmap(file);
         const canvas = document.createElement("canvas");
-        // Max width 1024 to reduce payload size
         const scale = 1024 / bmp.width;
-        // If image is smaller than 1024, don't scale up
         const finalScale = scale < 1 ? scale : 1;
         
         canvas.width = bmp.width * finalScale;
@@ -30,7 +27,6 @@ const ScannerScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         
         ctx.drawImage(bmp, 0, 0, canvas.width, canvas.height);
         
-        // Convert to blob then base64 to ensure JPEG format and compression
         canvas.toBlob((blob) => {
           if (!blob) {
              reject(new Error("Compression failed"));
@@ -42,7 +38,7 @@ const ScannerScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
              resolve(reader.result as string);
           };
           reader.onerror = reject;
-        }, "image/jpeg", 0.7); // 70% quality JPEG
+        }, "image/jpeg", 0.7);
         
       } catch (error) {
         reject(error);
@@ -54,7 +50,6 @@ const ScannerScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     const file = e.target.files?.[0];
     if (file) {
       try {
-        // Just show preview initially
         const compressedBase64 = await compressImage(file);
         setImage(compressedBase64);
         setResult(null);
@@ -91,8 +86,6 @@ const ScannerScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       - Keep it under 60 words.
       `;
 
-      // Convert the Base64 state back to a Blob to send as FormData (Multipart)
-      // This is more robust for Vercel/Node backends than sending large JSON strings.
       const fetchResponse = await fetch(image);
       const blob = await fetchResponse.blob();
 
@@ -100,35 +93,28 @@ const ScannerScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       formData.append('image', blob, 'scan.jpg');
       formData.append('prompt', prompt);
 
-      // Call Vercel Serverless Function
       const response = await fetch('/api/analyse', { 
         method: 'POST',
-        body: formData, // Browser sets Content-Type: multipart/form-data; boundary=...
+        body: formData,
       });
 
-      // Handle Non-JSON errors (e.g., 504 Gateway Timeout, 413 Payload Too Large)
       if (!response.ok) {
-        let errorMsg = `Server error: ${response.status}`;
-        try {
-            const errorData = await response.json();
-            if (errorData.error) errorMsg = errorData.error;
-        } catch (e) {
-            // ignore JSON parse error on non-ok response
-        }
-        throw new Error(errorMsg);
+        throw new Error(`Erreur réseau: ${response.status}`);
       }
 
       const data = await response.json();
       
-      if (data.success) {
-          setResult(data.result);
+      if (data.status === "ok") {
+          setResult(data.analyse || "Aucun texte généré.");
+      } else if (data.status === "partial") {
+          setResult(data.analyse || "Erreur partielle.");
       } else {
-          throw new Error(data.error || "Analyse impossible");
+          setResult("Réponse serveur invalide.");
       }
 
     } catch (error: any) {
       console.error("Scan failed:", error);
-      setResult(`Erreur: ${error.message || "Analyse impossible"}`);
+      setResult(`Erreur: ${error.message || "Analyse interrompue"}`);
     } finally {
       setLoading(false);
     }
@@ -152,7 +138,6 @@ const ScannerScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       <div className="flex-1 overflow-y-auto no-scrollbar px-6 space-y-6 pb-24">
          <div className="glass p-6 rounded-[32px] bg-black/60 border border-white/10 space-y-6">
             
-            {/* Game Mode Selector */}
             <div className="grid grid-cols-2 gap-3 p-1 bg-white/5 rounded-2xl border border-white/5">
                 <button 
                     onClick={() => setGameMode('simple')}
