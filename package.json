@@ -1,3 +1,4 @@
+
 {
   "name": "vick-v4",
   "version": "1.0.0",
@@ -13,9 +14,7 @@
     "framer-motion": "^12.34.0",
     "lucide-react": "^0.563.0",
     "@google/genai": "^1.40.0",
-    "cloudinary": "^1.41.0",
-    "busboy": "^1.6.0",
-    "node-fetch": "^3.3.2"
+    "busboy": "^1.6.0"
   },
   "devDependencies": {
     "@types/react": "^18.2.0",
