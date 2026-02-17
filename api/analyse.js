@@ -8,7 +8,6 @@ export const config = {
 };
 
 export default async function handler(req, res) {
-  // Toujours renvoyer du JSON, quoi qu'il arrive
   res.setHeader('Content-Type', 'application/json');
 
   if (req.method !== "POST") {
@@ -42,19 +41,18 @@ export default async function handler(req, res) {
     busboy.on("finish", async () => {
       try {
         if (!fileBuffer || fileBuffer.length === 0) {
-          throw new Error("Le serveur n'a reçu aucune image.");
+          throw new Error("L'image n'a pas pu être traitée par le serveur.");
         }
 
         const apiKey = process.env.API_KEY;
         if (!apiKey) {
-          throw new Error("Configuration API Key manquante sur Vercel.");
+          throw new Error("Clé API manquante dans l'environnement de production.");
         }
 
         const ai = new GoogleGenAI({ apiKey });
         
-        // Utilisation de Gemini 3 Flash pour la rapidité sur Vercel
         const response = await ai.models.generateContent({
-          model: "gemini-3-flash-preview",
+          model: "gemini-3-flash-preview", // Version la plus stable et rapide
           contents: [
             {
               parts: [
@@ -73,23 +71,21 @@ export default async function handler(req, res) {
         const result = response.text;
 
         if (!result) {
-          throw new Error("L'IA n'a retourné aucun contenu.");
+          throw new Error("L'IA n'a pas pu extraire de données de cette image.");
         }
 
-        // RÉPONSE SUCCÈS - FORMAT OBLIGATOIRE
         return res.status(200).json({
           status: "ok",
           analyser: result,
-          source: "image_upload"
+          source: "server_side_vision"
         });
 
       } catch (error) {
-        console.error("Critical Backend Error:", error.message);
-        // RÉPONSE ÉCHEC - FORMAT OBLIGATOIRE
+        console.error("Vercel API Error:", error.message);
         return res.status(200).json({
           status: "partiel",
-          analyser: "Analyse interrompue : " + (error.message || "Erreur inconnue"),
-          message: error.message || "Exception non gérée",
+          analyser: "ERREUR D'ANALYSE. VÉRIFIEZ LA NETTETÉ DES IMAGES.",
+          message: error.message,
           predictions: []
         });
       } finally {
@@ -100,9 +96,8 @@ export default async function handler(req, res) {
     busboy.on("error", (err) => {
       res.status(200).json({ 
         status: "partiel", 
-        analyser: "Erreur de flux.", 
-        message: err.message, 
-        predictions: [] 
+        analyser: "ERREUR DE CONNEXION AU SERVEUR.", 
+        message: err.message 
       });
       resolve();
     });
