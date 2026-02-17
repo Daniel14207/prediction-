@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Upload, ScanEye, Search, CheckCircle2, AlertTriangle, Layers, Zap } from 'lucide-react';
+// Added missing RefreshCw import from lucide-react
+import { ArrowLeft, Upload, ScanEye, Search, CheckCircle2, AlertTriangle, Layers, Zap, RefreshCw } from 'lucide-react';
 
 const ScannerScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [image, setImage] = useState<string | null>(null);
@@ -23,7 +24,7 @@ const ScannerScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         canvas.height = bmp.height * finalScale;
         
         const ctx = canvas.getContext("2d");
-        if (!ctx) throw new Error("Could not get canvas context");
+        if (!ctx) throw new Error("Canvas context error");
         
         ctx.drawImage(bmp, 0, 0, canvas.width, canvas.height);
         
@@ -34,12 +35,9 @@ const ScannerScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           }
           const reader = new FileReader();
           reader.readAsDataURL(blob);
-          reader.onloadend = () => {
-             resolve(reader.result as string);
-          };
+          reader.onloadend = () => resolve(reader.result as string);
           reader.onerror = reject;
-        }, "image/jpeg", 0.7);
-        
+        }, "image/jpeg", 0.8);
       } catch (error) {
         reject(error);
       }
@@ -54,7 +52,7 @@ const ScannerScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         setImage(compressedBase64);
         setResult(null);
       } catch (err) {
-        console.error("Image processing error", err);
+        console.error("Upload error", err);
       }
     }
   };
@@ -72,18 +70,7 @@ const ScannerScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       const prompt = `
       TASK: Analyze this casino game screenshot.
       CONTEXT: Game Mode is "${gameMode === 'simple' ? 'Simple' : 'Multiple'}".
-      
-      STRICT OUTPUT FORMAT (No intro, no outro):
-      
-      RESULTAT:
-      - [Primary Prediction/Pattern Detected]
-      - Cote Cible: [e.g. >2.00x]
-      - Risque: [Faible / Moyen / Élevé]
-      - SIGNAL: [PRENDRE / ÉVITER]
-      
-      RULES:
-      - If visual quality is poor, reply "Image illisible".
-      - Keep it under 60 words.
+      FORMAT: Clean result, risk assessment and signal.
       `;
 
       const fetchResponse = await fetch(image);
@@ -98,24 +85,20 @@ const ScannerScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         body: formData,
       });
 
-      if (!response.ok) {
-        throw new Error(`Serveur injoignable (${response.status})`);
-      }
-
-      const data = await response.json();
-      
-      // Mandatory format handling: 'analyser' field
-      if (data.status === "ok") {
-          setResult(data.analyser || "Analyse terminée, aucun détail supplémentaire.");
-      } else if (data.status === "partiel") {
-          setResult(data.analyser || data.message || "Analyse partielle effectuée.");
+      // Toujours vérifier si la réponse est du JSON avant de parser
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.indexOf("application/json") !== -1) {
+          const data = await response.json();
+          // On utilise 'analyser' comme défini dans le backend corrigé
+          setResult(data.analyser || data.message || "Analyse terminée.");
       } else {
-          setResult("Le serveur a renvoyé un format de réponse invalide.");
+          // Fallback si Vercel renvoie une page d'erreur HTML
+          setResult("Erreur serveur (Timeout ou Configuration). Veuillez vérifier votre connexion.");
       }
 
     } catch (error: any) {
       console.error("Scan failed:", error);
-      setResult(`Échec de l'analyse : ${error.message || "Connexion perdue"}`);
+      setResult(`Erreur Critique : ${error.message || "Problème de connexion"}`);
     } finally {
       setLoading(false);
     }
@@ -129,8 +112,8 @@ const ScannerScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             <ArrowLeft size={20} />
           </motion.button>
           <div className="flex flex-col">
-            <h2 className="text-xl font-orbitron font-black text-white tracking-widest text-glow">VISUAL SCANNER</h2>
-            <span className="text-[10px] font-bold text-purple-400 tracking-[0.3em] uppercase">Gemini Vision Cloud</span>
+            <h2 className="text-xl font-orbitron font-black text-white tracking-widest text-glow uppercase">Visual Scanner</h2>
+            <span className="text-[10px] font-bold text-purple-400 tracking-[0.3em] uppercase">Gemini Neural Cloud</span>
           </div>
         </div>
         <ScanEye size={20} className="text-purple-400/50" />
@@ -161,6 +144,7 @@ const ScannerScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             <motion.div 
                 onClick={() => fileInputRef.current?.click()}
                 whileTap={{ scale: 0.98 }}
+                animate={shake && !image ? { x: [-10, 10, -10, 10, 0] } : {}}
                 className={`w-full aspect-video rounded-2xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden relative
                 ${image ? 'border-purple-500/50 bg-black/40' : 'border-white/10 bg-white/5 hover:bg-white/10'}`}
             >
@@ -182,10 +166,11 @@ const ScannerScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 whileTap={{ scale: 0.98 }}
                 onClick={handleScan}
                 className={`w-full py-5 rounded-2xl font-orbitron font-bold tracking-[0.3em] flex items-center justify-center space-x-3 transition-all
-                  ${loading ? 'bg-white/5 text-white/20 border border-white/5' : 'bg-purple-600 text-white shadow-[0_0_20px_#9333EA] border border-purple-400'}`}
+                  ${loading ? 'bg-white/5 text-white/20' : 'bg-purple-600 text-white shadow-[0_0_20px_#9333EA] border border-purple-400'}`}
             >
-                {loading ? <ScanEye className="animate-spin" /> : <Search />}
-                <span>{loading ? 'CLOUD ANALYSE...' : 'LANCER ANALYSE'}</span>
+                {/* Fixed missing RefreshCw icon by adding the import above */}
+                {loading ? <RefreshCw className="animate-spin" /> : <Search />}
+                <span>{loading ? 'ANALYSE CLOUD...' : 'LANCER ANALYSE'}</span>
             </motion.button>
          </div>
 
@@ -198,7 +183,7 @@ const ScannerScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 >
                     <div className="flex items-center space-x-2 mb-4">
                         <CheckCircle2 size={16} className="text-purple-500" />
-                        <h3 className="text-xs font-orbitron font-black text-white tracking-[0.3em] uppercase">Rapport Signal</h3>
+                        <h3 className="text-xs font-orbitron font-black text-white tracking-[0.3em] uppercase">Rapport de Signal</h3>
                     </div>
                     <p className="text-sm text-white/90 leading-relaxed whitespace-pre-wrap font-orbitron">
                         {result}
