@@ -8,14 +8,14 @@ export const config = {
 };
 
 export default async function handler(req, res) {
-  // Sécurité absolue : Toujours du JSON
+  // Toujours renvoyer du JSON, quoi qu'il arrive
   res.setHeader('Content-Type', 'application/json');
 
   if (req.method !== "POST") {
     return res.status(200).json({ 
       status: "partiel", 
-      analyser: "Méthode non autorisée", 
-      message: "Seul le POST est accepté", 
+      analyser: "Méthode non autorisée.", 
+      message: "Seul POST est supporté.", 
       predictions: [] 
     });
   }
@@ -23,7 +23,7 @@ export default async function handler(req, res) {
   const busboy = Busboy({ headers: req.headers });
   let fileBuffer = null;
   let fileMimeType = null;
-  let promptText = "Analyse cette capture de jeu de casino.";
+  let promptText = "Analyse cette capture de jeu.";
 
   return new Promise((resolve) => {
     busboy.on("field", (fieldname, val) => {
@@ -42,20 +42,17 @@ export default async function handler(req, res) {
     busboy.on("finish", async () => {
       try {
         if (!fileBuffer || fileBuffer.length === 0) {
-          return res.status(200).json({
-            status: "partiel",
-            analyser: "Erreur : Image non reçue par le serveur.",
-            message: "Buffer vide",
-            predictions: []
-          });
+          throw new Error("Le serveur n'a reçu aucune image.");
         }
 
         const apiKey = process.env.API_KEY;
         if (!apiKey) {
-          throw new Error("Clé API manquante dans l'environnement Vercel.");
+          throw new Error("Configuration API Key manquante sur Vercel.");
         }
 
         const ai = new GoogleGenAI({ apiKey });
+        
+        // Utilisation de Gemini 3 Flash pour la rapidité sur Vercel
         const response = await ai.models.generateContent({
           model: "gemini-3-flash-preview",
           contents: [
@@ -76,10 +73,10 @@ export default async function handler(req, res) {
         const result = response.text;
 
         if (!result) {
-          throw new Error("L'IA n'a pas pu générer de texte pour cette image.");
+          throw new Error("L'IA n'a retourné aucun contenu.");
         }
 
-        // FORMAT OBLIGATOIRE – SUCCÈS
+        // RÉPONSE SUCCÈS - FORMAT OBLIGATOIRE
         return res.status(200).json({
           status: "ok",
           analyser: result,
@@ -87,12 +84,12 @@ export default async function handler(req, res) {
         });
 
       } catch (error) {
-        console.error("Vercel Backend Error:", error.message);
-        // FORMAT OBLIGATOIRE – ÉCHEC / PARTIEL (Garantit que le frontend reçoit un JSON)
+        console.error("Critical Backend Error:", error.message);
+        // RÉPONSE ÉCHEC - FORMAT OBLIGATOIRE
         return res.status(200).json({
           status: "partiel",
-          analyser: "Désolé, l'analyse a échoué. Veuillez réessayer avec une capture plus nette.",
-          message: error.message,
+          analyser: "Analyse interrompue : " + (error.message || "Erreur inconnue"),
+          message: error.message || "Exception non gérée",
           predictions: []
         });
       } finally {
@@ -100,12 +97,12 @@ export default async function handler(req, res) {
       }
     });
 
-    busboy.on("error", (error) => {
-      res.status(200).json({
-        status: "partiel",
-        analyser: "Erreur lors du transfert de l'image.",
-        message: error.message,
-        predictions: []
+    busboy.on("error", (err) => {
+      res.status(200).json({ 
+        status: "partiel", 
+        analyser: "Erreur de flux.", 
+        message: err.message, 
+        predictions: [] 
       });
       resolve();
     });
