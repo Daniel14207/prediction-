@@ -1,6 +1,6 @@
+
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-// Added missing RefreshCw import from lucide-react
 import { ArrowLeft, Upload, ScanEye, Search, CheckCircle2, AlertTriangle, Layers, Zap, RefreshCw } from 'lucide-react';
 
 const ScannerScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
@@ -85,20 +85,22 @@ const ScannerScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         body: formData,
       });
 
-      // Toujours vérifier si la réponse est du JSON avant de parser
-      const contentType = response.headers.get("content-type");
-      if (contentType && contentType.indexOf("application/json") !== -1) {
-          const data = await response.json();
-          // On utilise 'analyser' comme défini dans le backend corrigé
-          setResult(data.analyser || data.message || "Analyse terminée.");
+      const data = await response.json();
+      
+      if (data.status === "ok") {
+          // Extraire le texte pour l'affichage dans le scanner
+          const res = data.analyser.resultats;
+          if (Array.isArray(res)) {
+            setResult(res.map(r => typeof r === 'object' ? JSON.stringify(r, null, 2) : r).join('\n'));
+          } else {
+            setResult(data.analyser.raw_text || "Analyse terminée.");
+          }
       } else {
-          // Fallback si Vercel renvoie une page d'erreur HTML
-          setResult("Erreur serveur (Timeout ou Configuration). Veuillez vérifier votre connexion.");
+          setResult(data.analyser?.message || "Erreur serveur.");
       }
 
     } catch (error: any) {
-      console.error("Scan failed:", error);
-      setResult(`Erreur Critique : ${error.message || "Problème de connexion"}`);
+      setResult(`Erreur: ${error.message || "Problème de connexion"}`);
     } finally {
       setLoading(false);
     }
@@ -168,7 +170,6 @@ const ScannerScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 className={`w-full py-5 rounded-2xl font-orbitron font-bold tracking-[0.3em] flex items-center justify-center space-x-3 transition-all
                   ${loading ? 'bg-white/5 text-white/20' : 'bg-purple-600 text-white shadow-[0_0_20px_#9333EA] border border-purple-400'}`}
             >
-                {/* Fixed missing RefreshCw icon by adding the import above */}
                 {loading ? <RefreshCw className="animate-spin" /> : <Search />}
                 <span>{loading ? 'ANALYSE CLOUD...' : 'LANCER ANALYSE'}</span>
             </motion.button>

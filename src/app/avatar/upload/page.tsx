@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useRef } from 'react';
+// Fix: Import React to provide access to the React namespace for types like React.FormEvent
+import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Upload, CheckCircle2, Loader2, Globe } from 'lucide-react';
 
@@ -10,6 +11,7 @@ export default function AvatarUploadPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Fix: event type is now correctly found from the React namespace
   const handleUpload = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!inputFileRef.current?.files?.[0]) return;
